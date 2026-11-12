@@ -18,7 +18,9 @@
     vocabSearch: "",
     apiSettings: {
       provider: "gemini",
-      apiKey: ""
+      apiKey: "",
+      githubRepo: "timmigol/languageLearningApp",
+      githubToken: ""
     }
   };
 
@@ -279,6 +281,7 @@
 
     // Inventory
     inventoryCountBadge: document.getElementById("inventoryCountBadge"),
+    syncStatusText: document.getElementById("syncStatusText"),
     filterTabs: document.querySelectorAll(".filter-tab"),
     vocabSearchInput: document.getElementById("vocabSearchInput"),
     saveJsonBtn: document.getElementById("saveJsonBtn"),
@@ -292,6 +295,8 @@
     settingsBtn: document.getElementById("settingsBtn"),
     settingsModal: document.getElementById("settingsModal"),
     closeSettingsModalBtn: document.getElementById("closeSettingsModalBtn"),
+    githubRepoInput: document.getElementById("githubRepoInput"),
+    githubTokenInput: document.getElementById("githubTokenInput"),
     apiProviderSelect: document.getElementById("apiProviderSelect"),
     apiKeyInput: document.getElementById("apiKeyInput"),
     saveApiKeyBtn: document.getElementById("saveApiKeyBtn"),
@@ -371,12 +376,84 @@
     }
   }
 
+  // Push updated vocabulary.json directly to GitHub repository via GitHub Contents API
+  async function syncVocabToGitHub(commitMsg) {
+    const token = state.apiSettings?.githubToken?.trim();
+    const repo = (state.apiSettings?.githubRepo || "timmigol/languageLearningApp").trim();
+    if (!token || !repo) return;
+
+    if (dom.syncStatusText) {
+      dom.syncStatusText.textContent = "⏳ Syncing vocabulary.json to GitHub...";
+    }
+
+    try {
+      const apiUrl = `https://api.github.com/repos/${repo}/contents/vocabulary.json`;
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json"
+      };
+
+      // 1. Get current file SHA if vocabulary.json already exists
+      let sha = undefined;
+      const getRes = await fetch(apiUrl, { headers, cache: "no-store" });
+      if (getRes.ok) {
+        const fileData = await getRes.json();
+        sha = fileData.sha;
+      }
+
+      // 2. Encode UTF-8 JSON to Base64
+      const jsonStr = JSON.stringify(state.vocabInventory, null, 2);
+      const base64Content = btoa(unescape(encodeURIComponent(jsonStr)));
+
+      // 3. Commit updated vocabulary.json
+      const putRes = await fetch(apiUrl, {
+        method: "PUT",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: commitMsg || "Update vocabulary.json from LingoRead app",
+          content: base64Content,
+          ...(sha ? { sha } : {})
+        })
+      });
+
+      if (!putRes.ok) {
+        throw new Error(`GitHub API ${putRes.status}`);
+      }
+
+      if (dom.syncStatusText) {
+        dom.syncStatusText.textContent = "✅ Auto-saved to GitHub (vocabulary.json)";
+      }
+    } catch (err) {
+      console.warn("GitHub auto-sync failed:", err);
+      if (dom.syncStatusText) {
+        dom.syncStatusText.textContent = "⚠️ Saved locally (GitHub sync failed — check token permissions)";
+      }
+    }
+  }
+
   function updateModeBadge() {
-    if (state.apiSettings && state.apiSettings.apiKey) {
+    const hasAi = Boolean(state.apiSettings && state.apiSettings.apiKey);
+    const hasGh = Boolean(state.apiSettings && state.apiSettings.githubToken);
+
+    if (hasAi && hasGh) {
+      const providerName = state.apiSettings.provider === "openai" ? "OpenAI" : "Gemini";
+      dom.modeBadgeText.textContent = `${providerName} + GitHub Auto-Sync`;
+    } else if (hasGh) {
+      dom.modeBadgeText.textContent = "GitHub Auto-Sync Active";
+    } else if (hasAi) {
       const providerName = state.apiSettings.provider === "openai" ? "OpenAI Live AI" : "Gemini Live AI";
       dom.modeBadgeText.textContent = `${providerName} + Offline Fallback`;
     } else {
       dom.modeBadgeText.textContent = "Built-in Engine + Dictionary";
+    }
+
+    if (dom.syncStatusText) {
+      dom.syncStatusText.textContent = hasGh
+        ? `✅ Connected to ${state.apiSettings.githubRepo || "timmigol/languageLearningApp"} (auto-saves vocabulary.json)`
+        : "Saved in browser · Click Sync & AI Settings for auto-GitHub save";
     }
   }
 
@@ -1119,6 +1196,7 @@ Return valid JSON only: {"translation": "...", "exampleTarget": "...", "exampleE
     }
 
     saveVocabToStorage();
+    syncVocabToGitHub(`Add "${term}" (${newItem.language.toUpperCase()}) to vocabulary.json`);
     renderInventory();
 
     // Update highlights in current passage
@@ -1404,6 +1482,7 @@ Return valid JSON only: {"translation": "...", "exampleTarget": "...", "exampleE
         const id = deleteBtn.dataset.deleteId;
         state.vocabInventory = state.vocabInventory.filter((item) => item.id !== id);
         saveVocabToStorage();
+        syncVocabToGitHub("Remove item from vocabulary.json");
         renderInventory();
         if (state.currentPassage) renderPassage(state.currentPassage);
         return;
@@ -1453,6 +1532,12 @@ Return valid JSON only: {"translation": "...", "exampleTarget": "...", "exampleE
 
     // Settings Modal
     const openModal = () => {
+      if (dom.githubRepoInput) {
+        dom.githubRepoInput.value = state.apiSettings.githubRepo || "timmigol/languageLearningApp";
+      }
+      if (dom.githubTokenInput) {
+        dom.githubTokenInput.value = state.apiSettings.githubToken || "";
+      }
       dom.apiProviderSelect.value = state.apiSettings.provider || "gemini";
       dom.apiKeyInput.value = state.apiSettings.apiKey || "";
       dom.settingsModal.classList.remove("hidden");
@@ -1466,18 +1551,29 @@ Return valid JSON only: {"translation": "...", "exampleTarget": "...", "exampleE
     dom.saveApiKeyBtn.addEventListener("click", () => {
       state.apiSettings = {
         provider: dom.apiProviderSelect.value,
-        apiKey: dom.apiKeyInput.value.trim()
+        apiKey: dom.apiKeyInput.value.trim(),
+        githubRepo: (dom.githubRepoInput?.value || "timmigol/languageLearningApp").trim(),
+        githubToken: (dom.githubTokenInput?.value || "").trim()
       };
       localStorage.setItem(STORAGE_KEY_API, JSON.stringify(state.apiSettings));
       updateModeBadge();
       closeModal();
+      if (state.apiSettings.githubToken) {
+        syncVocabToGitHub("Initial sync of vocabulary.json from LingoRead");
+      }
       generatePassage();
     });
 
     dom.clearApiKeyBtn.addEventListener("click", () => {
-      state.apiSettings = { provider: "gemini", apiKey: "" };
+      state.apiSettings = {
+        provider: "gemini",
+        apiKey: "",
+        githubRepo: "timmigol/languageLearningApp",
+        githubToken: ""
+      };
       localStorage.setItem(STORAGE_KEY_API, JSON.stringify(state.apiSettings));
       dom.apiKeyInput.value = "";
+      if (dom.githubTokenInput) dom.githubTokenInput.value = "";
       updateModeBadge();
       closeModal();
     });

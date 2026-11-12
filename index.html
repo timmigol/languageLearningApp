@@ -25,12 +25,12 @@
         <span class="status-dot" id="apiStatusDot"></span>
         <span id="modeBadgeText">Built-in Engine + Dictionary</span>
       </button>
-      <button id="settingsBtn" class="btn btn-secondary btn-sm" aria-label="AI API Settings">
+      <button id="settingsBtn" class="btn btn-secondary btn-sm" aria-label="GitHub Sync & AI Settings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
-        <span>AI Key</span>
+        <span>Sync &amp; AI Settings</span>
       </button>
     </div>
   </header>
@@ -215,10 +215,11 @@
 
       <!-- Vocabulary Inventory Card -->
       <div class="card inventory-card">
+        <!-- Inventory Header -->
         <div class="inventory-header">
           <div>
             <h2 class="inventory-title">Vocabulary Inventory</h2>
-            <p class="inventory-subtitle">Saved words &amp; sentence fragments</p>
+            <p class="inventory-subtitle" id="syncStatusText">Saved in browser · Click Sync &amp; AI Settings for auto-GitHub save</p>
           </div>
           <span class="inventory-count" id="inventoryCountBadge">0 saved</span>
         </div>
@@ -276,34 +277,53 @@
     </div>
   </div>
 
-  <!-- Settings Modal for Optional Gemini / OpenAI API Key -->
+  <!-- Settings Modal for Optional Gemini / OpenAI API Key & GitHub Auto-Sync -->
   <div id="settingsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="settingsModalTitle">Generation Engine &amp; AI API Settings</h3>
+        <h3 id="settingsModalTitle">Settings: GitHub Auto-Sync &amp; AI API</h3>
         <button type="button" id="closeSettingsModalBtn" class="btn-close">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">
-          LingoRead includes a <strong>built-in offline CEFR generator &amp; bilingual dictionary</strong> so you can generate 200-word Spanish &amp; Swedish texts and look up phrases immediately.
-          Optionally, add a Gemini or OpenAI API key below for unlimited live AI generation on any custom topic.
-        </p>
-
-        <div class="field-group">
-          <label for="apiProviderSelect">AI Provider (Optional)</label>
-          <select id="apiProviderSelect" class="input-select">
-            <option value="gemini">Google Gemini API (gemini-2.5-flash)</option>
-            <option value="openai">OpenAI API (gpt-4o-mini)</option>
-          </select>
+        <div class="settings-section">
+          <h4 class="settings-section-title">1. Automatic `vocabulary.json` Sync to GitHub</h4>
+          <p class="modal-desc">
+            Add a GitHub Personal Access Token (with <code>Contents: Read &amp; write</code> permission for <code>timmigol/languageLearningApp</code>) so every time you click <strong>Confirm &amp; Save</strong>, the app updates <code>vocabulary.json</code> in your GitHub repo automatically.
+          </p>
+          <div class="field-group">
+            <label for="githubRepoInput">GitHub Repository (owner/repo)</label>
+            <input type="text" id="githubRepoInput" class="input-text input-sm" value="timmigol/languageLearningApp" placeholder="timmigol/languageLearningApp" />
+          </div>
+          <div class="field-group">
+            <label for="githubTokenInput">GitHub Personal Access Token (Fine-grained or Classic)</label>
+            <input type="password" id="githubTokenInput" class="input-text input-sm" placeholder="github_pat_... or ghp_... (saved only in your browser)" />
+          </div>
         </div>
 
-        <div class="field-group">
-          <label for="apiKeyInput">API Key</label>
-          <input type="password" id="apiKeyInput" class="input-text" placeholder="Paste your API key (saved locally in browser)..." />
+        <hr class="settings-divider" />
+
+        <div class="settings-section">
+          <h4 class="settings-section-title">2. Optional Live AI Generation Key</h4>
+          <p class="modal-desc">
+            LingoRead works offline out of the box. Optionally add a Gemini or OpenAI API key for live custom AI generation.
+          </p>
+
+          <div class="field-group">
+            <label for="apiProviderSelect">AI Provider (Optional)</label>
+            <select id="apiProviderSelect" class="input-select">
+              <option value="gemini">Google Gemini API (gemini-2.5-flash)</option>
+              <option value="openai">OpenAI API (gpt-4o-mini)</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="apiKeyInput">AI API Key</label>
+            <input type="password" id="apiKeyInput" class="input-text input-sm" placeholder="Paste your Gemini or OpenAI key..." />
+          </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" id="clearApiKeyBtn" class="btn btn-secondary">Use Built-in Offline Engine</button>
+        <button type="button" id="clearApiKeyBtn" class="btn btn-secondary">Clear Keys</button>
         <button type="button" id="saveApiKeyBtn" class="btn btn-primary">Save Settings</button>
       </div>
     </div>
