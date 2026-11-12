@@ -1,0 +1,22 @@
+[
+  {
+    "id": "starter-es-sin-prisas",
+    "term": "sin prisas",
+    "language": "es",
+    "level": "B1",
+    "translation": "without rushing / unhurriedly",
+    "exampleTarget": "Los fines de semana disfrutamos del desayuno sin prisas.",
+    "exampleEn": "On weekends we enjoy breakfast without rushing.",
+    "createdAt": "2026-11-12T06:30:00.000Z"
+  },
+  {
+    "id": "starter-sv-lagom",
+    "term": "lagom",
+    "language": "sv",
+    "level": "B1",
+    "translation": "just the right amount / balanced",
+    "exampleTarget": "Vattnet i sjön var alledeles lagom varmt för ett kvällsdopp.",
+    "exampleEn": "The water in the lake was just the right warmth for an evening swim.",
+    "createdAt": "2026-11-12T06:31:00.000Z"
+  }
+]

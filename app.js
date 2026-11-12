@@ -281,6 +281,8 @@
     inventoryCountBadge: document.getElementById("inventoryCountBadge"),
     filterTabs: document.querySelectorAll(".filter-tab"),
     vocabSearchInput: document.getElementById("vocabSearchInput"),
+    saveJsonBtn: document.getElementById("saveJsonBtn"),
+    loadJsonInput: document.getElementById("loadJsonInput"),
     exportVocabBtn: document.getElementById("exportVocabBtn"),
     inventoryList: document.getElementById("inventoryList"),
 
@@ -297,15 +299,15 @@
   };
 
   // Initialization
-  function init() {
-    loadSavedState();
+  async function init() {
+    await loadSavedState();
     bindEvents();
     updateModeBadge();
     renderInventory();
     generatePassage();
   }
 
-  function loadSavedState() {
+  async function loadSavedState() {
     try {
       const savedVocab = localStorage.getItem(STORAGE_KEY_VOCAB);
       if (savedVocab) {
@@ -317,6 +319,47 @@
       }
     } catch (e) {
       console.warn("Could not read localStorage:", e);
+    }
+
+    // Also load vocabulary.json from the repo/folder and merge any missing items
+    try {
+      const res = await fetch("vocabulary.json", { cache: "no-store" });
+      if (res.ok) {
+        const fileItems = await res.json();
+        if (Array.isArray(fileItems)) {
+          mergeVocabularyItems(fileItems);
+        }
+      }
+    } catch (err) {
+      // Runs fine even if opened via file:// where fetch may be restricted
+    }
+  }
+
+  function mergeVocabularyItems(incomingItems) {
+    let added = false;
+    incomingItems.forEach((item) => {
+      if (!item || !item.term || !item.language) return;
+      const exists = state.vocabInventory.some(
+        (existing) =>
+          existing.language === item.language &&
+          existing.term.toLowerCase() === item.term.toLowerCase()
+      );
+      if (!exists) {
+        state.vocabInventory.push({
+          id: item.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          term: item.term,
+          language: item.language,
+          level: item.level || "B1",
+          translation: item.translation || "",
+          exampleTarget: item.exampleTarget || "",
+          exampleEn: item.exampleEn || "",
+          createdAt: item.createdAt || new Date().toISOString()
+        });
+        added = true;
+      }
+    });
+    if (added) {
+      saveVocabToStorage();
     }
   }
 
@@ -1166,6 +1209,44 @@ Return valid JSON only: {"translation": "...", "exampleTarget": "...", "exampleE
     window.speechSynthesis.speak(utterance);
   }
 
+  // Save vocabulary.json file
+  function saveInventoryJsonFile() {
+    const jsonString = JSON.stringify(state.vocabInventory, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "vocabulary.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // Load vocabulary.json file from disk
+  function handleLoadJsonFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (Array.isArray(parsed)) {
+          mergeVocabularyItems(parsed);
+          renderInventory();
+          if (state.currentPassage) {
+            renderPassage(state.currentPassage);
+          }
+        }
+      } catch (err) {
+        alert("Invalid JSON file. Please select a valid vocabulary.json file.");
+      }
+      event.target.value = "";
+    };
+    reader.readAsText(file);
+  }
+
   // Export CSV
   function exportInventoryCsv() {
     if (state.vocabInventory.length === 0) return;
@@ -1348,6 +1429,14 @@ Return valid JSON only: {"translation": "...", "exampleTarget": "...", "exampleE
       state.vocabSearch = dom.vocabSearchInput.value;
       renderInventory();
     });
+
+    if (dom.saveJsonBtn) {
+      dom.saveJsonBtn.addEventListener("click", saveInventoryJsonFile);
+    }
+
+    if (dom.loadJsonInput) {
+      dom.loadJsonInput.addEventListener("change", handleLoadJsonFile);
+    }
 
     dom.exportVocabBtn.addEventListener("click", exportInventoryCsv);
 

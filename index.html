@@ -236,8 +236,17 @@
             class="input-search"
             placeholder="Search saved words..."
           />
+        </div>
+        <div class="inventory-file-actions">
+          <button type="button" id="saveJsonBtn" class="btn btn-secondary btn-xs" title="Download vocabulary.json to save in your GitHub repo">
+            💾 Save JSON
+          </button>
+          <label for="loadJsonInput" class="btn btn-secondary btn-xs file-label-btn" title="Load a vocabulary.json file">
+            📂 Load JSON
+          </label>
+          <input type="file" id="loadJsonInput" accept=".json,application/json" class="hidden" />
           <button type="button" id="exportVocabBtn" class="btn btn-secondary btn-xs" title="Export Inventory as CSV">
-            Export CSV
+            📊 Export CSV
           </button>
         </div>
 

@@ -691,8 +691,21 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem;
+  padding-bottom: 0.55rem;
+}
+
+.inventory-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
   padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--border-color);
+}
+
+.file-label-btn {
+  cursor: pointer;
+  margin: 0;
 }
 
 .filter-tabs {
